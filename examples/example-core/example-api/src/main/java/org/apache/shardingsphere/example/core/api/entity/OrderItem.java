@@ -18,6 +18,8 @@
 package org.apache.shardingsphere.example.core.api.entity;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class OrderItem implements Serializable {
     
@@ -30,6 +32,8 @@ public class OrderItem implements Serializable {
     private int userId;
     
     private String status;
+
+    private LocalDateTime addTime;
     
     public long getOrderItemId() {
         return orderItemId;
@@ -62,9 +66,17 @@ public class OrderItem implements Serializable {
     public void setStatus(final String status) {
         this.status = status;
     }
-    
+
+    public LocalDateTime getAddTime() {
+        return addTime;
+    }
+
+    public void setAddTime(LocalDateTime addTime) {
+        this.addTime = addTime;
+    }
+
     @Override
     public String toString() {
-        return String.format("order_item_id:%s, order_id: %s, user_id: %s, status: %s", orderItemId, orderId, userId, status);
+        return String.format("order_item_id:%s, order_id: %s, user_id: %s, status: %s,add_time: %s", orderItemId, orderId, userId, status, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(addTime));
     }
 }

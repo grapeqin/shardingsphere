@@ -30,6 +30,7 @@ import org.apache.shardingsphere.example.core.jdbc.repository.OrderRepositoryImp
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -122,6 +123,7 @@ public final class OrderServiceImpl implements ExampleService {
         order.setUserId(i);
         order.setAddressId(i);
         order.setStatus("INSERT_TEST");
+        order.setAddTime(LocalDateTime.of(2022,4,1,4,0,0));
         orderRepository.insert(order);
         return order;
     }
@@ -130,7 +132,9 @@ public final class OrderServiceImpl implements ExampleService {
         OrderItem item = new OrderItem();
         item.setOrderId(order.getOrderId());
         item.setUserId(i);
+        item.setAddTime(order.getAddTime());
         item.setStatus("INSERT_TEST");
+
         orderItemRepository.insert(item);
     }
     

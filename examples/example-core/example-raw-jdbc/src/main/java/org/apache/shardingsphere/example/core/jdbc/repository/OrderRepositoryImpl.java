@@ -21,11 +21,11 @@ import org.apache.shardingsphere.example.core.api.entity.Order;
 import org.apache.shardingsphere.example.core.api.repository.OrderRepository;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.text.DateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -39,7 +39,7 @@ public class OrderRepositoryImpl implements OrderRepository {
     
     @Override
     public void createTableIfNotExists() throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS t_order (order_id BIGINT NOT NULL AUTO_INCREMENT, user_id INT NOT NULL, address_id BIGINT NOT NULL, status VARCHAR(50), PRIMARY KEY (order_id))";
+        String sql = "CREATE TABLE IF NOT EXISTS t_order (order_id BIGINT NOT NULL AUTO_INCREMENT, user_id INT NOT NULL, address_id BIGINT NOT NULL, status VARCHAR(50),add_time datetime NOT NULL, PRIMARY KEY (order_id))";
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
@@ -66,12 +66,13 @@ public class OrderRepositoryImpl implements OrderRepository {
     
     @Override
     public Long insert(final Order order) throws SQLException {
-        String sql = "INSERT INTO t_order (user_id, address_id, status) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO t_order (user_id, address_id, status, add_time) VALUES (?, ?, ?, ?)";
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setInt(1, order.getUserId());
             preparedStatement.setLong(2, order.getAddressId());
             preparedStatement.setString(3, order.getStatus());
+            preparedStatement.setString(4, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(order.getAddTime()));
             preparedStatement.executeUpdate();
             try (ResultSet resultSet = preparedStatement.getGeneratedKeys()) {
                 if (resultSet.next()) {
@@ -109,6 +110,7 @@ public class OrderRepositoryImpl implements OrderRepository {
                 order.setUserId(resultSet.getInt(2));
                 order.setAddressId(resultSet.getLong(3));
                 order.setStatus(resultSet.getString(4));
+                order.setAddTime(resultSet.getTimestamp(5).toLocalDateTime());
                 result.add(order);
             }
         }

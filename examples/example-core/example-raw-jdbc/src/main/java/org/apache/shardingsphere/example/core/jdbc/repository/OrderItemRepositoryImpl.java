@@ -21,11 +21,11 @@ import org.apache.shardingsphere.example.core.api.repository.OrderItemRepository
 import org.apache.shardingsphere.example.core.api.entity.OrderItem;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -40,7 +40,7 @@ public class OrderItemRepositoryImpl implements OrderItemRepository {
     @Override
     public void createTableIfNotExists() throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS t_order_item "
-            + "(order_item_id BIGINT NOT NULL AUTO_INCREMENT, order_id BIGINT NOT NULL, user_id INT NOT NULL, status VARCHAR(50), PRIMARY KEY (order_item_id))";
+            + "(order_item_id BIGINT NOT NULL AUTO_INCREMENT, order_id BIGINT NOT NULL, user_id INT NOT NULL, status VARCHAR(50),add_time datetime NOT NULL, PRIMARY KEY (order_item_id))";
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
@@ -67,12 +67,13 @@ public class OrderItemRepositoryImpl implements OrderItemRepository {
     
     @Override
     public Long insert(final OrderItem orderItem) throws SQLException {
-        String sql = "INSERT INTO t_order_item (order_id, user_id, status) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO t_order_item (order_id, user_id, status, add_time) VALUES (?, ?, ?, ?)";
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setLong(1, orderItem.getOrderId());
             preparedStatement.setInt(2, orderItem.getUserId());
             preparedStatement.setString(3, orderItem.getStatus());
+            preparedStatement.setString(4, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(orderItem.getAddTime()));
             preparedStatement.executeUpdate();
             try (ResultSet resultSet = preparedStatement.getGeneratedKeys()) {
                 if (resultSet.next()) {
@@ -112,6 +113,7 @@ public class OrderItemRepositoryImpl implements OrderItemRepository {
                 orderItem.setOrderId(resultSet.getLong(2));
                 orderItem.setUserId(resultSet.getInt(3));
                 orderItem.setStatus(resultSet.getString(4));
+                orderItem.setAddTime(resultSet.getTimestamp(5).toLocalDateTime());
                 result.add(orderItem);
             }
         }

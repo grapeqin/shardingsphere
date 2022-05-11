@@ -21,53 +21,81 @@ dataSources:
     driverClassName: com.mysql.jdbc.Driver
     jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
     username: root
-    password:
+    password: 123456
   ds_1:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.jdbc.Driver
     jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
     username: root
-    password:
+    password: 123456
+  ds_2:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_2?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+  ds_3:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_3?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+  ds_4:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_4?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
 
+# 分片规则配置
 rules:
 - !SHARDING
+# 自动分片
   autoTables:
+    # 逻辑表
     t_order:
+      # 实际的数据源，这里表示分2个库
       actualDataSources: ds_0,ds_1
+      # 分片策略
       shardingStrategy:
+        # 标准分片:基于单个列的分片
         standard:
-          shardingColumn: order_id
-          shardingAlgorithmName: auto-mod
+          # 分片列
+          shardingColumn: add_time
+          # 分片算法
+          shardingAlgorithmName: auto-interval
+      # id生成策略配置
       keyGenerateStrategy:
+        # 自动生成id的列名
         column: order_id
+        # id生成算法名
         keyGeneratorName: snowflake
+    # 逻辑表
     t_order_item:
+      # 实际的数据源，这里表示分2个库
       actualDataSources: ds_0,ds_1
       shardingStrategy:
         standard:
-          shardingColumn: order_id
-          shardingAlgorithmName: auto-mod
+          shardingColumn: add_time
+          shardingAlgorithmName: auto-interval
       keyGenerateStrategy:
         column: order_item_id
         keyGeneratorName: snowflake
-    t_account:
-      actualDataSources: ds_0,ds_1
-      shardingStrategy:
-        standard:
-          shardingAlgorithmName: auto-mod
-      keyGenerateStrategy:
-        column: account_id
-        keyGeneratorName: snowflake
-  defaultShardingColumn: account_id
+  defaultShardingColumn: add_time
+  # 分片算法
   shardingAlgorithms:
-    auto-mod:
-      type: MOD
+    auto-interval:
+      # 基于分片容量的范围分片算法
+      type: AUTO_INTERVAL
       props:
-        sharding-count: 4
-  
+        datetime-lower: "2022-05-01 00:00:00"
+        datetime-upper: "2022-06-01 00:00:00"
+        sharding-seconds: "86400"
+
   keyGenerators:
     snowflake:
       type: SNOWFLAKE
 
 props:
+  # 打印实际SQL
   sql-show: true

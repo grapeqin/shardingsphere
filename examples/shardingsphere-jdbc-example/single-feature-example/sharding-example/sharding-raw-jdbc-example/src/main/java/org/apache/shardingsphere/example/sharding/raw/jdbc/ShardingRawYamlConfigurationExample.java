@@ -38,8 +38,9 @@ public final class ShardingRawYamlConfigurationExample {
     private static ShardingType shardingType = ShardingType.SHARDING_AUTO_TABLES;
     
     public static void main(final String[] args) throws SQLException, IOException {
+        String str = "auto_interval";
         DataSource dataSource = YamlDataSourceFactory.newInstance(shardingType);
         ExampleExecuteTemplate.run(new OrderServiceImpl(dataSource));
-        ExampleExecuteTemplate.run(new AccountServiceImpl(dataSource));
+//        ExampleExecuteTemplate.run(new AccountServiceImpl(dataSource));
     }
 }
