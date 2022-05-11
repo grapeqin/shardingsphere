@@ -45,9 +45,12 @@ t_account表:
 ### 1.1.1 [取模分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#取模分片算法)
 
 示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
 选择 `private static ShardingType shardingType = ShardingType.SHARDING_AUTO_TABLES;`,
-构建DataSource的配置文件位于`/META-INF/sharding-auto-tables.yaml`,内容如下所示:
+
 详细的配置文件请参考[这里](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding/#配置项说明)
+
+构建DataSource的配置文件位于`/META-INF/sharding-auto-tables.yaml`,内容如下所示:
 ```yaml
 # 数据源配置，表示存在2个数据源
 dataSources:
@@ -126,7 +129,8 @@ props:
   # 打印实际SQL
   sql-show: true
 ```
-以上配置会将逻辑表分为4张实际表,分片逻辑通过`org.apache.shardingsphere.sharding.algorithm.sharding.mod.ModShardingAlgorithm`的实现予以证实。那关于db的选择是怎样的呢？
+以上配置会将逻辑表分为4张实际表,分片逻辑请参考`org.apache.shardingsphere.sharding.algorithm.sharding.mod.ModShardingAlgorithm`。那关于db的选择是怎样的呢？
+
 我们分别将`actualDataSources`设置为1、2、3、4、5个数据源，看看`t_order`这张表是如何在db中分布的
 
 | dataSources个数 | dataSources配置            | actual table分布                                                          |
@@ -142,7 +146,9 @@ props:
 ### 1.1.2 [哈希取模分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#哈希取模分片算法)
 
 示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
 选择 `private static ShardingType shardingType = ShardingType.SHARDING_AUTO_TABLES;`,
+
 构建DataSource的配置文件位于`/META-INF/sharding-auto-tables.yaml`,内容如下所示:
 ```yaml
 # 数据源配置，表示存在2个数据源
@@ -222,12 +228,14 @@ props:
   # 打印实际SQL
   sql-show: true
 ```
-以上配置会将逻辑表分为4张实际表,分片逻辑通过`org.apache.shardingsphere.sharding.algorithm.sharding.mod.HashModShardingAlgorithm`的实现予以证实。
+以上配置会将逻辑表分为4张实际表,分片逻辑请参考`org.apache.shardingsphere.sharding.algorithm.sharding.mod.HashModShardingAlgorithm`。
 
 ### 1.1.3 [基于分片容量的范围分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#基于分片容量的范围分片算法)
 
 示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
 选择 `private static ShardingType shardingType = ShardingType.SHARDING_AUTO_TABLES;`,
+
 构建DataSource的配置文件位于`/META-INF/sharding-auto-tables.yaml`,内容如下所示:
 ```yaml
 # 数据源配置，表示存在2个数据源
@@ -322,7 +330,9 @@ props:
 ### 1.1.4 [基于分片边界的范围分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#基于分片边界的范围分片算法)
 
 示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
 选择 `private static ShardingType shardingType = ShardingType.SHARDING_AUTO_TABLES;`,
+
 构建DataSource的配置文件位于`/META-INF/sharding-auto-tables.yaml`,内容如下所示:
 ```yaml
 # 数据源配置，表示存在2个数据源
@@ -409,12 +419,15 @@ props:
 | 1          | [100000000000000000,500000000000000000)  |
 | 2          | [500000000000000000,1000000000000000000) |
 | 3          | [1000000000000000000,+∞)                 |
+
 分片键值落在对应区间,该记录就保存在对应rangeIndex的分表中。实现请参考`org.apache.shardingsphere.sharding.algorithm.sharding.range.BoundaryBasedRangeShardingAlgorithm`
 
 ### 1.1.5 [自动时间段分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#自动时间段分片算法)
 
 示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
 选择 `private static ShardingType shardingType = ShardingType.SHARDING_AUTO_TABLES;`,
+
 构建DataSource的配置文件位于`/META-INF/sharding-auto-tables.yaml`,内容如下所示:
 ```yaml
 # 数据源配置，表示存在2个数据源
@@ -487,6 +500,7 @@ props:
 ```
 
 上面的配置将自动分成32张表,按照1天(86400秒)的时间间隔进行分表。可以看到这种分片方式实际当中不是太实用,`sharding-seconds`以秒为单位，除了一分钟、一小时、一条这种间隔的秒数是固定的外,
+
 更常见的按月分表，由于不同月的间隔秒数不一致，不太好采用这种方式来分表.参考代码`org.apache.shardingsphere.sharding.algorithm.sharding.datetime.AutoIntervalShardingAlgorithm`
 
 
@@ -495,7 +509,115 @@ props:
 
 ### 1.2.1 [行表达式分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#行表达式分片算法) 
 
+示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
 
+选择 `private static ShardingType shardingType = ShardingType.SHARDING_DATABASES_AND_TABLES;`,
+
+构建DataSource的配置文件位于`/META-INF/sharding-databases-tables.yaml`,有关行表达式相关的内容,请参考[这里](https://shardingsphere.apache.org/document/current/cn/features/sharding/concept/inline-expression/),
+配置内容如下所示:
+```yaml
+# 数据源配置
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+  - !SHARDING
+    # 标准分片模式
+    tables:
+      # 逻辑表名
+      t_order:
+        # 实际数据节点列表ds_0.t_order_0,ds_0.t_order_1,ds_1.t_order_0,ds_1.t_order_1
+        actualDataNodes: ds_${0..1}.t_order_${0..1}
+        # 分表策略
+        tableStrategy:
+          # 标准分片模式
+          standard:
+            # 分片列
+            shardingColumn: order_id
+            # 分片算法
+            shardingAlgorithmName: t-order-inline
+        # key生成策略    
+        keyGenerateStrategy:
+          # 自动生成id的列名
+          column: order_id
+          # 自动生成id的算法
+          keyGeneratorName: snowflake
+      # 逻辑表名    
+      t_order_item:
+        # 实际数据节点列表ds_0.t_order_item_0,ds_0.t_order_item_1,ds_1.t_order_item_0,ds_1.t_order_item_1
+        actualDataNodes: ds_${0..1}.t_order_item_${0..1}
+        tableStrategy:
+          standard:
+            shardingColumn: order_id
+            shardingAlgorithmName: t_order-item-inline
+        keyGenerateStrategy:
+          column: order_item_id
+          keyGeneratorName: snowflake
+    # 默认分片列
+    defaultShardingColumn: account_id
+    # 默认分库策略
+    defaultDatabaseStrategy:
+      #标准分片模式
+      standard:
+        # 分片列
+        shardingColumn: user_id
+        # 分片算法
+        shardingAlgorithmName: database-inline
+    defaultTableStrategy:
+      none:
+
+    #分片算法
+    shardingAlgorithms:
+      database-inline:
+        # 内置行表达式算法
+        type: INLINE
+        props:
+          algorithm-expression: ds_${user_id % 2}
+      t-order-inline:
+        type: INLINE
+        props:
+          algorithm-expression: t_order_${order_id % 2}
+      t_order-item-inline:
+        type: INLINE
+        props:
+          algorithm-expression: t_order_item_${order_id % 2}
+    #key生成算法      
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+
+props:
+  sql-show: true
+```
+
+上面的配置表示分2个库每个库2张表,通过表达式`user_id % 2`来分库,通过表达式 `order_id % 2`来分表
+
+1. `Logic SQL: INSERT INTO t_order (user_id, address_id, status, add_time) VALUES (?, ?, ?, ?)`对应的值`[1, 1, INSERT_TEST, 2022-04-01 04:00:00, 731207984494936064]`
+
+`user_id % 2`等于1,所以选择库`ds_1`, `order_id % 2`等于0,所以选择表`t_order_0`,最终选择的节点为`ds_1.t_order_0`
+
+`Actual SQL: ds_1 ::: INSERT INTO t_order_0 (user_id, address_id, status, add_time, order_id) VALUES (?, ?, ?, ?, ?) ::: [1, 1, INSERT_TEST, 2022-04-01 04:00:00, 731207984494936064]`
+
+2. `Logic SQL: SELECT * FROM t_order` 这条SQL没有带分区键,会广播所有库+所有表,执行结果如下:
+
+`Actual SQL: ds_0 ::: SELECT * FROM t_order_0 UNION ALL SELECT * FROM t_order_1`
+`Actual SQL: ds_1 ::: SELECT * FROM t_order_0 UNION ALL SELECT * FROM t_order_1`
+
+3. `Logic SQL: DELETE FROM t_order WHERE order_id=?` 这条SQL没有带分库键,会广播所有库;同时它带有分表键,所以能根据行表达式找到对应的分表,执行结果如下:
+
+`Actual SQL: ds_0 ::: DELETE FROM t_order_0 WHERE order_id=? ::: [731207984494936064]`
+`Actual SQL: ds_1 ::: DELETE FROM t_order_0 WHERE order_id=? ::: [731207984494936064]`
 
 ### 1.2.2 [时间范围分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#时间范围分片算法)
 
