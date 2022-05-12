@@ -621,9 +621,212 @@ props:
 
 ### 1.2.2 [时间范围分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#时间范围分片算法)
 
+示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
+选择 `private static ShardingType shardingType = ShardingType.SHARDING_INTERVAL_TABLES`,
+
+构建DataSource的配置文件位于`/META-INF/sharding-interval-tables.yaml`, 配置内容如下所示:
+```yaml
+# 数据源配置
+dataSources:
+  ds:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+  - !SHARDING
+    # 标准分片模式
+    tables:
+      # 逻辑表名
+      t_order:
+        # 实际数据节点列表
+        actualDataNodes: ds.t_order_20220${1..9},ds.t_order_20221${0..2}
+        # 分表策略
+        tableStrategy:
+          # 标准分片模式
+          standard:
+            # 分片列
+            shardingColumn: add_time
+            # 分片算法
+            shardingAlgorithmName: interval-algorithm
+        # key生成策略
+        keyGenerateStrategy:
+          # 自动生成id的列名
+          column: order_id
+          # 自动生成id的算法
+          keyGeneratorName: snowflake
+      # 逻辑表名
+      t_order_item:
+        # 实际数据节点列表
+        actualDataNodes: ds.t_order_item_20220${1..9},ds.t_order_item_20221${0..2}
+        tableStrategy:
+          standard:
+            shardingColumn: add_time
+            shardingAlgorithmName: interval-algorithm
+        keyGenerateStrategy:
+          column: order_item_id
+          keyGeneratorName: snowflake
+    # 默认分库策略
+    defaultDatabaseStrategy:
+      none:
+    defaultTableStrategy:
+      none:
+
+    #分片算法
+    shardingAlgorithms:
+      interval-algorithm:
+        type: INTERVAL
+        props:
+          datetime-pattern: "yyyy-MM-dd HH:mm:ss"
+          datetime-lower: "2022-05-01 00:00:00"
+          sharding-suffix-pattern: "yyyyMM"
+          datetime-interval-amount: 1
+          datetime-interval-unit: "MONTHS"
+    #key生成算法
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+
+props:
+  sql-show: true
+```
+
+上述yaml配置了2022年按月分12张分表,`datetime-lower`配置为`2022-05-01`,如果我们插入一条时间早于该值的记录会报错如下所示:
+```shell
+Exception in thread "main" java.lang.IllegalStateException: Insert statement does not support sharding table routing to multiple data nodes.
+	at com.google.common.base.Preconditions.checkState(Preconditions.java:508)
+	at org.apache.shardingsphere.sharding.route.engine.validator.dml.impl.ShardingInsertStatementValidator.postValidate(ShardingInsertStatementValidator.java:101)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.lambda$createRouteContext$1(ShardingSQLRouter.java:57)
+	at java.util.Optional.ifPresent(Optional.java:159)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.createRouteContext(ShardingSQLRouter.java:57)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.createRouteContext(ShardingSQLRouter.java:44)
+	at org.apache.shardingsphere.infra.route.engine.impl.PartialSQLRouteExecutor.route(PartialSQLRouteExecutor.java:73)
+	at org.apache.shardingsphere.infra.route.engine.SQLRouteEngine.route(SQLRouteEngine.java:53)
+	at org.apache.shardingsphere.infra.context.kernel.KernelProcessor.route(KernelProcessor.java:54)
+	at org.apache.shardingsphere.infra.context.kernel.KernelProcessor.generateExecutionContext(KernelProcessor.java:46)
+	at org.apache.shardingsphere.driver.jdbc.core.statement.ShardingSpherePreparedStatement.createExecutionContext(ShardingSpherePreparedStatement.java:470)
+	at org.apache.shardingsphere.driver.jdbc.core.statement.ShardingSpherePreparedStatement.executeUpdate(ShardingSpherePreparedStatement.java:309)
+```
+那我们不禁要问插入的最大值是多少呢？文档中指出`datetime-upper`不配置的话,默认值为当前时间;根据实验，在按月分表的情况下,只要格式化(yyyyMM)后值为`202205`，都能正常插入数据,
+也就是说最大插入的时间为`2022-05-31 23:59:59`。但是如果插入日期为`2022-06-01 00:00:00`的数据,就会报错如下所示:
+```shell
+Exception in thread "main" java.lang.IllegalStateException: Insert statement does not support sharding table routing to multiple data nodes.
+	at com.google.common.base.Preconditions.checkState(Preconditions.java:508)
+	at org.apache.shardingsphere.sharding.route.engine.validator.dml.impl.ShardingInsertStatementValidator.postValidate(ShardingInsertStatementValidator.java:101)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.lambda$createRouteContext$1(ShardingSQLRouter.java:57)
+	at java.util.Optional.ifPresent(Optional.java:159)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.createRouteContext(ShardingSQLRouter.java:57)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.createRouteContext(ShardingSQLRouter.java:44)
+	at org.apache.shardingsphere.infra.route.engine.impl.PartialSQLRouteExecutor.route(PartialSQLRouteExecutor.java:73)
+	at org.apache.shardingsphere.infra.route.engine.SQLRouteEngine.route(SQLRouteEngine.java:53)
+	at org.apache.shardingsphere.infra.context.kernel.KernelProcessor.route(KernelProcessor.java:54)
+	at org.apache.shardingsphere.infra.context.kernel.KernelProcessor.generateExecutionContext(KernelProcessor.java:46)
+	at org.apache.shardingsphere.driver.jdbc.core.statement.ShardingSpherePreparedStatement.createExecutionContext(ShardingSpherePreparedStatement.java:470)
+	at org.apache.shardingsphere.driver.jdbc.core.statement.ShardingSpherePreparedStatement.executeUpdate(ShardingSpherePreparedStatement.java:309)
+```
+
+我们换成按天分表重新来验证，配置如下所示:
+```yaml
+# 数据源配置
+dataSources:
+  ds:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+  - !SHARDING
+    # 标准分片模式
+    tables:
+      # 逻辑表名
+      t_order:
+        # 实际数据节点列表
+        actualDataNodes: ds.t_order_2022050${1..9},ds.t_order_2022051${1..9},ds.t_order_2022052${1..9},ds.t_order_2022053${0..1}
+        # 分表策略
+        tableStrategy:
+          # 标准分片模式
+          standard:
+            # 分片列
+            shardingColumn: add_time
+            # 分片算法
+            shardingAlgorithmName: interval-algorithm
+        # key生成策略
+        keyGenerateStrategy:
+          # 自动生成id的列名
+          column: order_id
+          # 自动生成id的算法
+          keyGeneratorName: snowflake
+      # 逻辑表名
+      t_order_item:
+        # 实际数据节点列表
+        actualDataNodes: ds.t_order_item_2022050${1..9},ds.t_order_item_2022051${1..9},ds.t_order_item_2022052${1..9},ds.t_order_item_2022053${0..1}
+        tableStrategy:
+          standard:
+            shardingColumn: add_time
+            shardingAlgorithmName: interval-algorithm
+        keyGenerateStrategy:
+          column: order_item_id
+          keyGeneratorName: snowflake
+    # 默认分库策略
+    defaultDatabaseStrategy:
+      none:
+    defaultTableStrategy:
+      none:
+
+    #分片算法
+    shardingAlgorithms:
+      interval-algorithm:
+        type: INTERVAL
+        props:
+          datetime-pattern: "yyyy-MM-dd HH:mm:ss"
+          datetime-lower: "2022-05-01 00:00:00"
+          sharding-suffix-pattern: "yyyyMMdd"
+          datetime-interval-amount: 1
+          datetime-interval-unit: "DAYS"
+    #key生成算法
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+
+props:
+  sql-show: true
+```
+
+这一次，我们插入`2022-05-13 00:00:00`的记录，sharding-jdbc会抛出如下异常:
+```shell
+Exception in thread "main" java.lang.IllegalStateException: Insert statement does not support sharding table routing to multiple data nodes.
+	at com.google.common.base.Preconditions.checkState(Preconditions.java:508)
+	at org.apache.shardingsphere.sharding.route.engine.validator.dml.impl.ShardingInsertStatementValidator.postValidate(ShardingInsertStatementValidator.java:101)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.lambda$createRouteContext$1(ShardingSQLRouter.java:57)
+	at java.util.Optional.ifPresent(Optional.java:159)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.createRouteContext(ShardingSQLRouter.java:57)
+	at org.apache.shardingsphere.sharding.route.engine.ShardingSQLRouter.createRouteContext(ShardingSQLRouter.java:44)
+	at org.apache.shardingsphere.infra.route.engine.impl.PartialSQLRouteExecutor.route(PartialSQLRouteExecutor.java:73)
+	at org.apache.shardingsphere.infra.route.engine.SQLRouteEngine.route(SQLRouteEngine.java:53)
+	at org.apache.shardingsphere.infra.context.kernel.KernelProcessor.route(KernelProcessor.java:54)
+	at org.apache.shardingsphere.infra.context.kernel.KernelProcessor.generateExecutionContext(KernelProcessor.java:46)
+	at org.apache.shardingsphere.driver.jdbc.core.statement.ShardingSpherePreparedStatement.createExecutionContext(ShardingSpherePreparedStatement.java:470)
+	at org.apache.shardingsphere.driver.jdbc.core.statement.ShardingSpherePreparedStatement.executeUpdate(ShardingSpherePreparedStatement.java:309)
+```
+
+通过按月和按日分表的实验，可以发现对于`datetime-upper`这项配置的默认值,取决于分表的时间维度,只要插入的记录时间与当前时间经过分表规则判断一致时，都可以正常记录，但插入记录的时间经过分表规则计算后，
+
+如果大于以当前时间经过分表规则计算后的分区，则会插入失败。
+
+另外，通过实验，发现`datetime-upper`的默认值就是sharding-jdbc允许的上限了，如果你不是要缩小这个上限，直接忽略该配置即可。否则的话，可以通过设置`datetime-upper`为一个比默认值小的时间即可，
+
+设置完后，它仍然遵循前面推到出来的规则。
+
 ## 1.3.复合分片算法
 
 ### 1.3.1 [复合行表达式分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#复合行表达式分片算法)
+
+
 
 ## 1.4.Hint 分片算法
 

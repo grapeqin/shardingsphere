@@ -123,7 +123,8 @@ public final class OrderServiceImpl implements ExampleService {
         order.setUserId(i);
         order.setAddressId(i);
         order.setStatus("INSERT_TEST");
-        order.setAddTime(LocalDateTime.of(2022,4,1,4,0,0));
+        LocalDateTime addTime = LocalDateTime.of(2022,5,12,0,0,0);
+        order.setAddTime(addTime);
         orderRepository.insert(order);
         return order;
     }

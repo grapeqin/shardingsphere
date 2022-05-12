@@ -33,6 +33,8 @@ public final class YamlDataSourceFactory {
                 return YamlShardingSphereDataSourceFactory.createDataSource(getFile("/META-INF/sharding-databases.yaml"));
             case SHARDING_TABLES:
                 return YamlShardingSphereDataSourceFactory.createDataSource(getFile("/META-INF/sharding-tables.yaml"));
+            case SHARDING_INTERVAL_TABLES:
+                return YamlShardingSphereDataSourceFactory.createDataSource(getFile("/META-INF/sharding-interval-tables.yaml"));
             case SHARDING_DATABASES_AND_TABLES:
                 return YamlShardingSphereDataSourceFactory.createDataSource(getFile("/META-INF/sharding-databases-tables.yaml"));
             case SHARDING_AUTO_TABLES:

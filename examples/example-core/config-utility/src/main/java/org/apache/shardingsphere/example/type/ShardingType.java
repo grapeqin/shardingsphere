@@ -22,6 +22,8 @@ public enum ShardingType {
     SHARDING_DATABASES,
     
     SHARDING_TABLES,
+
+    SHARDING_INTERVAL_TABLES,
     
     SHARDING_DATABASES_AND_TABLES,
     
