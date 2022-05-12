@@ -826,7 +826,70 @@ Exception in thread "main" java.lang.IllegalStateException: Insert statement doe
 
 ### 1.3.1 [复合行表达式分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#复合行表达式分片算法)
 
+示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
 
+选择 `private static ShardingType shardingType = ShardingType.ShardingType.SHARDING_COMPLEX_INLINE_TABLES`,
+
+构建DataSource的配置文件位于`/META-INF/sharding-complex-inline-tables.yaml`, 配置内容如下所示:
+```yaml
+dataSources:
+  ds:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+- !SHARDING
+  tables:
+    t_order: 
+      actualDataNodes: ds.t_order_${0..1}
+      tableStrategy: 
+        # 分片策略选择complex,表示有多个分片键
+        complex:
+          shardingColumns: user_id,order_id
+          shardingAlgorithmName: t-order-complex-inline
+      keyGenerateStrategy:
+        column: order_id
+        keyGeneratorName: snowflake
+    t_order_item:
+      actualDataNodes: ds.t_order_item_${0..1}
+      tableStrategy:
+        # 分片策略选择complex,表示有多个分片键
+        complex:
+          shardingColumns: user_id,order_id
+          shardingAlgorithmName: t-order-item-complex-inline
+      keyGenerateStrategy:
+        column: order_item_id
+        keyGeneratorName: snowflake
+  bindingTables:
+    - t_order,t_order_item
+  broadcastTables:
+    - t_address
+  
+  shardingAlgorithms:
+    t-order-complex-inline:
+      type: COMPLEX_INLINE
+      props:
+        algorithm-expression: t_order_${(user_id + order_id)  % 2}
+        sharding-columns: user_id,order_id
+    t-order-item-complex-inline:
+      type: COMPLEX_INLINE
+      props:
+        algorithm-expression: t_order_item_${(user_id + order_id)  % 2}
+        sharding-columns: user_id,order_id
+  keyGenerators:
+    snowflake:
+      type: SNOWFLAKE
+
+props:
+  sql-show: true
+```
+
+上述配置对表`t_order`和`t_order_item`分别设置了2个分片键,`user_id`和`order_id`,其分片逻辑请参考`org.apache.shardingsphere.sharding.algorithm.sharding.complex.ComplexInlineShardingAlgorithm`
+
+该算法要求逻辑SQL中要么一个分片键没有，要么所有的分片键都有，不允许出现部分分片键出现的情况。
 
 ## 1.4.Hint 分片算法
 
