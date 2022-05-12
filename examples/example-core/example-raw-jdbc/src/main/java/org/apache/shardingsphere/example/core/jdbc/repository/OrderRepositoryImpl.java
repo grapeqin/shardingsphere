@@ -39,7 +39,7 @@ public class OrderRepositoryImpl implements OrderRepository {
     
     @Override
     public void createTableIfNotExists() throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS t_order (order_id BIGINT NOT NULL AUTO_INCREMENT, user_id INT NOT NULL, address_id BIGINT NOT NULL, status VARCHAR(50),add_time datetime NOT NULL, PRIMARY KEY (order_id))";
+        String sql = "CREATE TABLE IF NOT EXISTS t_order (order_id BIGINT NOT NULL AUTO_INCREMENT, user_id INT NOT NULL, address_id BIGINT NOT NULL, status VARCHAR(50),add_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (order_id))";
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);

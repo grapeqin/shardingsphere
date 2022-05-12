@@ -21,22 +21,24 @@ dataSources:
     driverClassName: com.mysql.jdbc.Driver
     jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
     username: root
-    password:
+    password: 123456
   ds_1:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.jdbc.Driver
     jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
     username: root
-    password:
+    password: 123456
 
 rules:
 - !SHARDING
   tables:
     t_order: 
       actualDataNodes: ds_${0..1}.t_order_${0..1}
+      # 分库策略基于hit
       databaseStrategy:
         hint:
           shardingAlgorithmName: hint-test
+      # 分表策略基于hit
       tableStrategy:
         hint:
           shardingAlgorithmName: hint-test
@@ -45,21 +47,23 @@ rules:
         keyGeneratorName: snowflake
     t_order_item:
       actualDataNodes: ds_${0..1}.t_order_item_${0..1}
-  bindingTables:
-    - t_order,t_order_item
-  broadcastTables:
-    - t_address
 
+  # 默认的分库策略
   defaultDatabaseStrategy:
     standard:
+      # 分库列
       shardingColumn: user_id
+      # 分库算法
       shardingAlgorithmName: database-inline
+
   defaultTableStrategy:
     none:
-  
+
   shardingAlgorithms:
+    # 自定义的HIT分片算法
     hint-test:
       type: HINT_TEST
+    # 默认的数据库分片算法
     database-inline:
       type: INLINE
       props:

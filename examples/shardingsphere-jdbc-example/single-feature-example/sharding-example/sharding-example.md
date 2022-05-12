@@ -712,7 +712,7 @@ Exception in thread "main" java.lang.IllegalStateException: Insert statement doe
 ```
 那我们不禁要问插入的最大值是多少呢？文档中指出`datetime-upper`不配置的话,默认值为当前时间;根据实验，在按月分表的情况下,只要格式化(yyyyMM)后值为`202205`，都能正常插入数据,
 也就是说最大插入的时间为`2022-05-31 23:59:59`。但是如果插入日期为`2022-06-01 00:00:00`的数据,就会报错如下所示:
-```shell
+```
 Exception in thread "main" java.lang.IllegalStateException: Insert statement does not support sharding table routing to multiple data nodes.
 	at com.google.common.base.Preconditions.checkState(Preconditions.java:508)
 	at org.apache.shardingsphere.sharding.route.engine.validator.dml.impl.ShardingInsertStatementValidator.postValidate(ShardingInsertStatementValidator.java:101)
@@ -798,7 +798,7 @@ props:
 ```
 
 这一次，我们插入`2022-05-13 00:00:00`的记录，sharding-jdbc会抛出如下异常:
-```shell
+```
 Exception in thread "main" java.lang.IllegalStateException: Insert statement does not support sharding table routing to multiple data nodes.
 	at com.google.common.base.Preconditions.checkState(Preconditions.java:508)
 	at org.apache.shardingsphere.sharding.route.engine.validator.dml.impl.ShardingInsertStatementValidator.postValidate(ShardingInsertStatementValidator.java:101)
@@ -894,6 +894,126 @@ props:
 ## 1.4.Hint 分片算法
 
 ### 1.4.1 [Hint 行表达式分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#hint-行表达式分片算法)
+
+在有些情况下，分片列并不是待分片表的一部分，这种场景下sharding-jdbc提供了Hint分片算法，它可以通过在操作数据前设置Hint值，然后配合分片算法完成分片逻辑。
+
+示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingHintRawExample`
+
+选择 `private static final ShardingType TYPE = ShardingType.SHARDING_HINT_DATABASES_TABLES`,
+
+构建DataSource的配置文件位于`/META-INF/sharding-hint-databases-tables.yaml`, 配置内容如下所示:
+```yaml
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+- !SHARDING
+  tables:
+    t_order: 
+      actualDataNodes: ds_${0..1}.t_order_${0..1}
+      # 分库策略基于hit
+      databaseStrategy:
+        hint:
+          shardingAlgorithmName: hint-test
+      # 分表策略基于hit
+      tableStrategy:
+        hint:
+          shardingAlgorithmName: hint-test
+      keyGenerateStrategy:
+        column: order_id
+        keyGeneratorName: snowflake
+    t_order_item:
+      actualDataNodes: ds_${0..1}.t_order_item_${0..1}
+
+  # 默认的分库策略
+  defaultDatabaseStrategy:
+    standard:
+      # 分库列
+      shardingColumn: user_id
+      # 分库算法
+      shardingAlgorithmName: database-inline
+
+  defaultTableStrategy:
+    none:
+
+  shardingAlgorithms:
+    # 自定义的HIT分片算法
+    hint-test:
+      type: HINT_TEST
+    # 默认的数据库分片算法
+    database-inline:
+      type: INLINE
+      props:
+        algorithm-expression: ds_${user_id % 2}
+    
+  keyGenerators:
+    snowflake:
+      type: SNOWFLAKE
+
+props:
+  sql-show: true
+```
+
+上述配置将`t_order`和`t_order_item`都分为了两个库两张表.
+
+其中`t_order`的分库和分表算法都是基于自定义的`HINT_TEST`,代码实现请参考`org.apache.shardingsphere.example.sharding.raw.jdbc.hint.ModuloHintShardingAlgorithm`
+
+`t_order_item`的分库策略是对`user_id`列采用行表达式算法取模。
+
+以下SQL的分库分表策略主要取决于Hint值,按如下所示进行设置：
+
+```
+hintManager.addDatabaseShardingValue("t_order", 1L);
+hintManager.addTableShardingValue("t_order", 1L);
+```
+
+
+1. 对于SQL `select * from t_order` 
+
+基于对`HINT_TEST`算法的逻辑分析，我们可以推断实际分片为`ds_1.t_order_1`。执行代码运行结果如下所示：
+
+```
+Actual SQL: ds_1 ::: select * from t_order_1
+```
+
+2. 对于SQL `SELECT i.* FROM t_order o, t_order_item i WHERE o.order_id = i.order_id`
+
+`t_order`还是一样，但`t_order_item`由于不含分片键,需要广播所有的表。这里就有个疑问，`t_order_item`一共有4张表，那它广播的方式是怎样呢？通过观察执行结果如下所示:
+
+```
+Actual SQL: ds_1 ::: SELECT i.* FROM t_order_1 o, t_order_item_0 i WHERE o.order_id = i.order_id
+Actual SQL: ds_1 ::: SELECT i.* FROM t_order_1 o, t_order_item_1 i WHERE o.order_id = i.order_id
+```
+
+可知它只广播已经确定的库`ds_1`中2张表`t_order_item_0`和`t_order_item_1`。
+
+3. 对于SQL `select * from t_order_item`
+
+没有带分片键，从理论上分析，应该是广播所有库所有分表，实际运行结果如下所示:
+
+```
+Actual SQL: ds_0 ::: select * from t_order_item_0 UNION ALL select * from t_order_item_1
+Actual SQL: ds_1 ::: select * from t_order_item_0 UNION ALL select * from t_order_item_1
+```
+
+4. 对于SQL `INSERT INTO t_order (user_id, address_id, status,add_time) VALUES (1, 1, 'init',now())`
+
+同1,直接写数据到`ds_1.t_order_1`，执行结果如下所示：
+
+```
+Actual SQL: ds_1 ::: INSERT INTO t_order_1 (user_id, address_id, status,add_time, order_id) VALUES (1, 1, 'init', now(), 731578033290346496)
+```
 
 ## 1.5.自定义类分片算法
 

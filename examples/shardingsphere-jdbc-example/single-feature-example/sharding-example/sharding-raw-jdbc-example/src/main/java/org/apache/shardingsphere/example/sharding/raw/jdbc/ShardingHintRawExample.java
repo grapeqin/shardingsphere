@@ -70,17 +70,17 @@ public final class ShardingHintRawExample {
             statement.execute("select * from t_order");
             statement.execute("SELECT i.* FROM t_order o, t_order_item i WHERE o.order_id = i.order_id");
             statement.execute("select * from t_order_item");
-            statement.execute("INSERT INTO t_order (user_id, address_id, status) VALUES (1, 1, 'init')");
+            statement.execute("INSERT INTO t_order (user_id, address_id, status,add_time) VALUES (1, 1, 'init',now())");
         }
     }
     
     private static void setHintValue(final HintManager hintManager) {
         switch (TYPE) {
-            case SHARDING_HINT_DATABASES_ONLY:
-                hintManager.addDatabaseShardingValue("t_order", 2L);
+            case SHARDING_HINT_DATABASES_TABLES:
+                hintManager.addDatabaseShardingValue("t_order", 1L);
                 hintManager.addTableShardingValue("t_order", 1L);
                 return;
-            case SHARDING_HINT_DATABASES_TABLES:
+            case SHARDING_HINT_DATABASES_ONLY:
                 hintManager.setDatabaseShardingValue(1L);
                 return;
             default:
