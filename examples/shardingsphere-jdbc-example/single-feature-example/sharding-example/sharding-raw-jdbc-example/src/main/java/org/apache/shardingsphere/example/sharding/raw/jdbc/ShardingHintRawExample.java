@@ -81,7 +81,7 @@ public final class ShardingHintRawExample {
                 hintManager.addTableShardingValue("t_order", 1L);
                 return;
             case SHARDING_HINT_DATABASES_ONLY:
-                hintManager.setDatabaseShardingValue(1L);
+                hintManager.setDatabaseShardingValue(0L);
                 return;
             default:
                 throw new UnsupportedOperationException("unsupported type");

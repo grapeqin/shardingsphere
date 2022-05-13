@@ -16,3 +16,4 @@
 #
  
 org.apache.shardingsphere.example.sharding.raw.jdbc.hint.ModuloHintShardingAlgorithm
+org.apache.shardingsphere.example.sharding.raw.jdbc.algorithm.MyComplexShardingAlgorithm

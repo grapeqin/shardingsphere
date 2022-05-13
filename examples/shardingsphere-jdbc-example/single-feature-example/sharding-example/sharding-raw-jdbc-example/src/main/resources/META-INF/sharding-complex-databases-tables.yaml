@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+# 数据源配置
 dataSources:
   ds_0:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
@@ -30,26 +31,54 @@ dataSources:
     password: 123456
 
 rules:
-- !SHARDING
-  tables:
-    t_order: 
-      actualDataNodes: ds_${0..1}.t_order
-    t_order_item:
-      actualDataNodes: ds_${0..1}.t_order_item
-  bindingTables:
-    - t_order,t_order_item
-  broadcastTables:
-    - t_address
-  
-  defaultDatabaseStrategy:
-    hint:
-      shardingAlgorithmName: hint-test
-  defaultTableStrategy:
-    none:
-  
-  shardingAlgorithms:
-    hint-test:
-      type: HINT_TEST
+  - !SHARDING
+    # 标准分片模式
+    tables:
+      # 逻辑表名
+      t_my_order:
+        # 实际数据节点列表
+        actualDataNodes: ds_0.t_my_order_${[0,2]},ds_1.t_my_order_${[1,3]}
+        # 分表策略
+        tableStrategy:
+          # 标准分片模式
+          complex:
+            # 分片列
+            shardingColumns: user_id,order_no
+            # 分片算法
+            shardingAlgorithmName: table-complex
+        # key生成策略
+        keyGenerateStrategy:
+          # 自动生成id的列名
+          column: order_id
+          # 自动生成id的算法
+          keyGeneratorName: snowflake
+    # 默认分库策略
+    defaultDatabaseStrategy:
+      # 复合分片模式
+      complex:
+        # 分片列
+        shardingColumns: user_id,order_no
+        # 分片算法
+        shardingAlgorithmName: database-complex
+    defaultTableStrategy:
+      none:
 
+    #分片算法
+    shardingAlgorithms:
+      database-complex:
+        # 自定义分片算法
+        type: COMPLEX_USERID_ORDERNO
+        props:
+          sharding-count: 2
+      table-complex:
+        type: COMPLEX_USERID_ORDERNO
+        props:
+          sharding-count: 4
+
+    #key生成算法
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
 props:
   sql-show: true
+

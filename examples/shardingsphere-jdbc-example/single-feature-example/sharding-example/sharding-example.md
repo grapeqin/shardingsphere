@@ -1018,3 +1018,211 @@ Actual SQL: ds_1 ::: INSERT INTO t_order_1 (user_id, address_id, status,add_time
 ## 1.5.自定义类分片算法
 
 ### 1.5.1 [自定义类分片算法](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding/#自定义类分片算法)
+
+假设有这样一张订单表,有两种维度的查询请求，一种是根据`user_id`，还有一种是根据`order_no`。我们要对它进行分库分表，那应该如何设计呢？
+
+比较容易想到的是以`user_id`作为分片键，但这时根据`order_no`来查询就会有问题，一个`user_id`通常会对应多个`order_no`,一个`order_no`只会对应一个`user_id`,
+我们可以将`user_id`的作为`order_no`的一部分,这样在根据`order_no`查询的时候，就可以通过分析`order_no`获得`user_id`，进而拿到分片键值，完成分库分表规则的路由。
+
+为了不增加`order_no`的长度，我们可以以`user_id`的后四位作为分库分表的因子，进而得到一种`order_no`的生成规则,假设`order_no`一共20位:
+`2205131049 1234 01 0001` 前10位是时间的`yyMMddHHmm`格式化字符串,第10-13位是`user_id`的后4位,第13-14位表示部署服务器的机器号,最后4位为随机数。
+
+针对这种分片算法sharding-jdbc提供了自定义分片算法的接口,我们先实现自定义分片算法,代码请参考`org.apache.shardingsphere.example.sharding.raw.jdbc.algorithm.MyComplexShardingAlgorithm`.
+
+示例类:`org.apache.shardingsphere.example.sharding.raw.jdbc.ShardingRawYamlConfigurationExample`
+
+选择 `private static ShardingType shardingType = ShardingType.SHARDING_COMPLEX_CUSTOM_DATABASES_TABLES`,
+
+构建DataSource的配置文件位于`/META-INF/sharding-complex-databases-tables.yaml`, 配置内容如下所示:
+```yaml
+# 数据源配置
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+  - !SHARDING
+    # 标准分片模式
+    tables:
+      # 逻辑表名
+      t_my_order:
+        # 实际数据节点列表
+        actualDataNodes: ds_0.t_my_order_${[0,2]},ds_1.t_my_order_${[1,3]}
+        # 分表策略
+        tableStrategy:
+          # 标准分片模式
+          complex:
+            # 分片列
+            shardingColumns: user_id,order_no
+            # 分片算法
+            shardingAlgorithmName: table-complex
+        # key生成策略
+        keyGenerateStrategy:
+          # 自动生成id的列名
+          column: order_id
+          # 自动生成id的算法
+          keyGeneratorName: snowflake
+    # 默认分库策略
+    defaultDatabaseStrategy:
+      # 复合分片模式
+      complex:
+        # 分片列
+        shardingColumns: user_id,order_no
+        # 分片算法
+        shardingAlgorithmName: database-complex
+    defaultTableStrategy:
+      none:
+
+    #分片算法
+    shardingAlgorithms:
+      database-complex:
+        # 自定义分片算法
+        type: CLASS_BASED
+        props:
+          strategy: complex
+          algorithmClassName: org.apache.shardingsphere.example.sharding.raw.jdbc.algorithm.MyComplexShardingAlgorithm
+          sharding-count: 2
+      table-complex:
+        type: CLASS_BASED
+        props:
+          strategy: complex
+          algorithmClassName: org.apache.shardingsphere.example.sharding.raw.jdbc.algorithm.MyComplexShardingAlgorithm
+          sharding-count: 4
+
+    #key生成算法
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+props:
+  sql-show: true
+```
+上述配置分2个库4张表:`ds_0.t_my_order_0,ds_0.t_my_order_2,ds_1.t_my_order_1,ds_1.t_my_order_3`
+
+接下来我们依次看下SQL执行的情况
+
+1. `INSERT INTO t_my_order (order_no,user_id, address_id, status) VALUES (?,?, ?, ?)` 值为 `22051311480001049898, 1, 1, INSERT_TEST, 731839484919808000`
+
+该SQL两个分片键`user_id`和`order_no`都存在,分库经过自定义算法会选择`ds_1`，同理分表会选择`t_my_order_1`，实际运行结果如下所示：
+
+```
+Actual SQL: ds_1 ::: INSERT INTO t_my_order_1 (order_no,user_id, address_id, status, order_id) VALUES (?, ?, ?, ?, ?) ::: [22051311480001049898, 1, 1, INSERT_TEST, 731839484919808000]
+```
+
+2. `SELECT * FROM t_my_order order by order_id` 
+
+该SQL无分片键，会执行广播路由，实际执行情况如下所示：
+
+```
+Actual SQL: ds_0 ::: SELECT * FROM t_my_order_0 order by order_id
+Actual SQL: ds_0 ::: SELECT * FROM t_my_order_2 order by order_id
+Actual SQL: ds_1 ::: SELECT * FROM t_my_order_1 order by order_id
+Actual SQL: ds_1 ::: SELECT * FROM t_my_order_3 order by order_id
+```
+
+3. `DELETE FROM t_my_order WHERE order_id=?`
+
+该SQL所带条件order_id无分片键,会执行广播路由,实际执行情况如下所示：
+
+```
+Actual SQL: ds_0 ::: DELETE FROM t_my_order_0 WHERE order_id=? ::: [731839484919808000]
+Actual SQL: ds_0 ::: DELETE FROM t_my_order_2 WHERE order_id=? ::: [731839484919808000]
+Actual SQL: ds_1 ::: DELETE FROM t_my_order_1 WHERE order_id=? ::: [731839484919808000]
+Actual SQL: ds_1 ::: DELETE FROM t_my_order_3 WHERE order_id=? ::: [731839484919808000]
+```
+
+4. `DELETE FROM t_my_order WHERE user_id = ?`
+
+该SQL带有分片键`user_id`,会执行分库分表路由，执行结果如下所示：
+
+```
+Actual SQL: ds_1 ::: DELETE FROM t_my_order_3 WHERE user_id = ? ::: [3]
+```
+
+5. `DELETE FROM t_my_order WHERE order_no = ?`
+
+该SQL带有分片键`order_no`，会执行分库分表路由，执行结果如下所示：
+
+``` 
+Actual SQL: ds_1 ::: DELETE FROM t_my_order_3 WHERE order_no = ? ::: [22051311480003284699]
+```
+
+关于自定义分片算法除了上述`type: CLASS_BASED` 的配置方式，还可以通过SPI的方式配置，具体配置如下所示：
+```yaml
+# 数据源配置
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.jdbc.Driver
+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+rules:
+  - !SHARDING
+    # 标准分片模式
+    tables:
+      # 逻辑表名
+      t_my_order:
+        # 实际数据节点列表
+        actualDataNodes: ds_0.t_my_order_${[0,2]},ds_1.t_my_order_${[1,3]}
+        # 分表策略
+        tableStrategy:
+          # 标准分片模式
+          complex:
+            # 分片列
+            shardingColumns: user_id,order_no
+            # 分片算法
+            shardingAlgorithmName: table-complex
+        # key生成策略
+        keyGenerateStrategy:
+          # 自动生成id的列名
+          column: order_id
+          # 自动生成id的算法
+          keyGeneratorName: snowflake
+    # 默认分库策略
+    defaultDatabaseStrategy:
+      # 复合分片模式
+      complex:
+        # 分片列
+        shardingColumns: user_id,order_no
+        # 分片算法
+        shardingAlgorithmName: database-complex
+    defaultTableStrategy:
+      none:
+
+    #分片算法
+    shardingAlgorithms:
+      database-complex:
+        # 自定义分片算法
+        type: COMPLEX_USERID_ORDERNO
+        props:
+          sharding-count: 2
+      table-complex:
+        type: COMPLEX_USERID_ORDERNO
+        props:
+          sharding-count: 4
+
+    #key生成算法
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+props:
+  sql-show: true
+```
+
