@@ -19,5 +19,10 @@ package org.apache.shardingsphere.example.core.api.repository;
 
 import org.apache.shardingsphere.example.core.api.entity.User;
 
+import java.sql.SQLException;
+import java.util.List;
+
 public interface UserRepository extends CommonRepository<User, Long> {
+
+    List<User> selectByUsername(String username) throws SQLException;
 }

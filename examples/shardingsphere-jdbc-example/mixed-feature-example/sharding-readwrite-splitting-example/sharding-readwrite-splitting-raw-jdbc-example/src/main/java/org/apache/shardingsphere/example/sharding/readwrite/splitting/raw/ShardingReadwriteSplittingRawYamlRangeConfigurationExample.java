@@ -37,6 +37,6 @@ public final class ShardingReadwriteSplittingRawYamlRangeConfigurationExample {
     public static void main(final String[] args) throws SQLException, IOException {
         DataSource dataSource = YamlRangeDataSourceFactory.newInstance(shardingType);
         ExampleExecuteTemplate.run(new OrderServiceImpl(dataSource));
-        ExampleExecuteTemplate.run(new AccountServiceImpl(dataSource));
+//        ExampleExecuteTemplate.run(new AccountServiceImpl(dataSource));
     }
 }

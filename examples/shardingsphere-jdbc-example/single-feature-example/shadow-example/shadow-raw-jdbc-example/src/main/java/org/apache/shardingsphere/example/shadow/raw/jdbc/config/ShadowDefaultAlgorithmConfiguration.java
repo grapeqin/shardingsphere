@@ -48,7 +48,7 @@ public final class ShadowDefaultAlgorithmConfiguration extends BaseShadowConfigu
     
     private RuleConfiguration createShadowRuleConfiguration() {
         ShadowRuleConfiguration result = new ShadowRuleConfiguration();
-        result.setDefaultShadowAlgorithmName("simple-note-algorithm");
+        result.setDefaultShadowAlgorithmName("simple-hint-algorithm");
         result.setShadowAlgorithms(createShadowAlgorithmConfigurations());
         result.setDataSources(createShadowDataSources());
         result.setTables(createShadowTables());

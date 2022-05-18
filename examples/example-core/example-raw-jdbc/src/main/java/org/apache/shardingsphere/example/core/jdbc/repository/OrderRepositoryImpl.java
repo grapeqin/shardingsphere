@@ -95,7 +95,7 @@ public class OrderRepositoryImpl implements OrderRepository {
     
     @Override
     public List<Order> selectAll() throws SQLException {
-        String sql = "SELECT * FROM t_order";
+        String sql = "SELECT * FROM t_order where user_id between 1 and 5";
         return getOrders(sql);
     }
     

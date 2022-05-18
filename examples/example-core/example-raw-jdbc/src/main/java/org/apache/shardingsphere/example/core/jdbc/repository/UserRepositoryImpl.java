@@ -40,7 +40,7 @@ public final class UserRepositoryImpl implements UserRepository {
     @Override
     public void createTableIfNotExists() throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS t_user "
-                + "(user_id INT NOT NULL AUTO_INCREMENT, username VARCHAR(200), pwd VARCHAR(200), PRIMARY KEY (user_id))";
+                + "(user_id INT NOT NULL AUTO_INCREMENT,username VARCHAR(200), pwd VARCHAR(200), PRIMARY KEY (user_id))";
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
@@ -92,6 +92,15 @@ public final class UserRepositoryImpl implements UserRepository {
     public List<User> selectAll() throws SQLException {
         String sql = "SELECT * FROM t_user";
         return getUsers(sql);
+    }
+
+    public List<User> selectByUsername(String username) throws SQLException{
+        String sql = "SELECT * FROM t_user where username = '"+username+"'";
+        List<User> resultList = getUsers(sql);
+        for (User user :resultList){
+            System.out.println(user);
+        }
+        return resultList;
     }
     
     private List<User> getUsers(final String sql) throws SQLException {

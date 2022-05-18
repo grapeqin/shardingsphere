@@ -30,8 +30,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 public final class ShadowUserRepositoryImpl implements ShadowUserRepository {
-    
-    private static final String SQL_NOTE = "/*shadow:true,foo:bar*/";
+
+    //shadow:true,
+    private static final String SQL_NOTE = "/*foo:bar*/";
     
     private final DataSource dataSource;
     

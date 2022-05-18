@@ -48,6 +48,10 @@ public final class UserServiceImpl implements ExampleService {
     public void processSuccess() throws SQLException {
         System.out.println("-------------- Process Success Begin ---------------");
         List<Long> userIds = insertData();
+        System.out.println("-------------- Search Success Begin ---------------");
+        String userName = "test_1";
+        userRepository.selectByUsername(userName);
+        System.out.println("-------------- Search Success Finish ---------------");
         printData();
         deleteData(userIds);
         printData();

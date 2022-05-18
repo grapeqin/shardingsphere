@@ -25,7 +25,8 @@ public final class TransactionXaAtomikosRawExample {
     public static void main(final String[] args) throws IOException, SQLException {
         XAOrderService orderService = new XAOrderService("/META-INF/sharding-databases-tables.yaml");
         orderService.init();
-        orderService.insert();
+        orderService.insertFailed();
+        System.out.println("result : " + orderService.selectAll());
         orderService.cleanup();
     }
 }
